@@ -37,21 +37,17 @@ def check_files():
                 old_time_file[key] = val
         for address, dirs, files in walk(new_path):
             for dir_name in dirs:
-                dir_path = path.join(address, dir_name)
-                dir_time = path.getmtime(dir_path)
+                dir_path = path.normpath(path.join(address, dir_name))
                 file_paths.append(dir_path)
-                new_file_paths.update({dir_path:f'{dir_time}'})
+                new_file_paths.update({dir_path:f'{path.getmtime(dir_path)}'})
                 for file_name in files:
                     if file_name != 'times.txt':
-                        #if os.path.normpath(item.filename) != os.path.normpath(file):
-                        file_path = path.join(address, file_name)
-                        file_time = path.getmtime(file_path)
-                        if file_name not in file_paths:
+                        file_path = path.normpath(path.join(address, file_name))
+                        if file_path not in file_paths:
                             file_paths.append(file_path)
-                            new_file_paths.update({file_path:f'{file_time}'})
+                            new_file_paths.update({file_path:f'{path.getmtime(file_path)}'})
         unmatched_item = set(old_time_file.items()) ^ set(new_file_paths.items())
-        l = len(unmatched_item)
-        if l == 0:
+        if len(unmatched_item) == 0:
             mb.showinfo('Сообщение', 'Новых файлов не обнаружено')
         else:
             with ZipFile(path.join(copy_path, archive_name), 'w') as zip:
@@ -59,20 +55,25 @@ def check_files():
                     zip.write(file)
             mb.showinfo('Сообщение', 'Файлы скопированы')
 
+            # заменить содержимое "times.txt" на новое
+            with open('times.txt', 'w') as f:
+                for key in new_file_paths:
+                    f.write(f'{key}:{new_file_paths[key]}\n')
+            mb.showinfo('Сообщение', 'Сформирован новый times.txt')
+
     else:
         for address, dirs, files in walk(new_path):
             for dir_name in dirs:
-                dir_path = path.join(address, dir_name)
-                dir_time = path.getmtime(dir_path)
+                dir_path = path.normpath(path.join(address, dir_name))
                 file_paths.append(dir_path)
                 with open('times.txt', 'a') as f:
-                    f.write(f'{dir_path}:{dir_time}\n')
+                    f.write(f'{dir_path}:{path.getmtime(dir_path)}\n')
                 for file_name in files:
-                    file_path = path.join(address, file_name)
-                    file_paths.append(file_path)
-                    file_time = path.getmtime(file_path)
-                    with open('times.txt', 'a') as f:
-                        f.write(f'{file_path}:{file_time}\n')
+                    file_path = path.normpath(path.join(address, file_name))
+                    if file_path not in file_paths:
+                        file_paths.append(file_path)
+                        with open('times.txt', 'a') as f:
+                            f.write(f'{file_path}:{path.getmtime(file_path)}\n')
 
         with ZipFile(path.join(copy_path,archive_name), 'w') as zip:
             for file in file_paths:
